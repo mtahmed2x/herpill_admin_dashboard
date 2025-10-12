@@ -1,6 +1,8 @@
 import {
   AllUsersResponseData,
   ApiResponse,
+  CreateStaffRequest,
+  LoginResponseData,
   ProfileResponseData,
   UpdateAvatarRequest,
   User,
@@ -9,6 +11,18 @@ import { baseApi } from "./api";
 
 export const userApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
+    createStaff: builder.mutation<
+      ApiResponse<LoginResponseData>,
+      CreateStaffRequest
+    >({
+      query: (credentials) => ({
+        url: "auth/register",
+        method: "POST",
+        // The role is fixed to 'staff' as per the requirement
+        body: { ...credentials, role: "staff" },
+      }),
+      invalidatesTags: [{ type: "Users", id: "LIST" }],
+    }),
     getProfile: builder.query<ApiResponse<ProfileResponseData>, void>({
       query: () => "user/profile",
       providesTags: ["User"],
@@ -106,8 +120,9 @@ export const userApi = baseApi.injectEndpoints({
 
     deleteUser: builder.mutation<ApiResponse<null>, string>({
       query: (id) => ({
-        url: `user/${id}`,
-        method: "DELETE",
+        url: `auth/delete-account`,
+        method: "POST",
+        body: { userId: id },
       }),
       invalidatesTags: [{ type: "Users", id: "LIST" }],
     }),
@@ -115,6 +130,7 @@ export const userApi = baseApi.injectEndpoints({
 });
 
 export const {
+  useCreateStaffMutation,
   useGetProfileQuery,
   useUpdateProfileMutation,
   useUpdateAvatarMutation,
