@@ -11,16 +11,13 @@ interface AuthState {
   isAuthenticated: boolean;
 }
 
+// The initial state is now clean and represents a logged-out user.
+// redux-persist will overwrite this with the stored data on page load.
 const initialState: AuthState = {
   user: null,
-  accessToken:
-    typeof window !== "undefined" ? localStorage.getItem("accessToken") : null,
-  refreshToken:
-    typeof window !== "undefined" ? localStorage.getItem("refreshToken") : null,
-  isAuthenticated:
-    typeof window !== "undefined"
-      ? !!localStorage.getItem("accessToken")
-      : false,
+  accessToken: null,
+  refreshToken: null,
+  isAuthenticated: false,
 };
 
 const authSlice = createSlice({
@@ -33,16 +30,14 @@ const authSlice = createSlice({
       state.accessToken = accessToken;
       state.refreshToken = refreshToken;
       state.isAuthenticated = true;
-      localStorage.setItem("accessToken", accessToken);
-      localStorage.setItem("refreshToken", refreshToken);
+      // REMOVED: All manual localStorage.setItem() calls are now gone.
     },
     logout: (state) => {
       state.user = null;
       state.accessToken = null;
       state.refreshToken = null;
       state.isAuthenticated = false;
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("refreshToken");
+      // REMOVED: All manual localStorage.removeItem() calls are now gone.
     },
   },
   extraReducers: (builder) => {
@@ -52,6 +47,8 @@ const authSlice = createSlice({
         authApi.endpoints.refreshToken.matchFulfilled
       ),
       (state, { payload }) => {
+        // This logic remains the same, it just updates the state in memory.
+        // redux-persist will automatically save the new state to storage.
         if (payload.success) {
           authSlice.caseReducers.setCredentials(state, {
             payload: payload.data,

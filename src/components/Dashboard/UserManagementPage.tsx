@@ -11,33 +11,22 @@ import Link from "next/link";
 import { useState } from "react";
 import toast from "react-hot-toast";
 
-/**
- * Props for the UserManagementPage component.
- * It determines the behavior and appearance of the page.
- */
 interface UserManagementPageProps {
   userType: "user" | "staff";
 }
 
-/**
- * A reusable component for displaying, managing, and paginating a list of users or staff,
- * with styling that matches the original UsersPage component.
- */
 const UserManagementPage = ({ userType }: UserManagementPageProps) => {
-  // --- Component Setup & State ---
   const isStaffPage = userType === "staff";
   const [page, setPage] = useState(1);
   const [limit] = useState(15);
 
-  // --- Dynamic Content based on userType ---
   const pageTitle = isStaffPage ? "Staff Management" : "Users";
   const listTitle = isStaffPage ? "Staff List" : "User List";
   const emptyListMessage = `No ${userType}s found.`;
   const detailsLinkPrefix = isStaffPage
-    ? "/dashboard/admin-panel/staff"
+    ? "/dashboard/staff"
     : "/dashboard/user";
 
-  // --- RTK Query Hooks for Data Fetching and Mutations ---
   const {
     data: usersResponse,
     isLoading,
@@ -83,12 +72,10 @@ const UserManagementPage = ({ userType }: UserManagementPageProps) => {
     }
   };
 
-  // --- Data Extraction ---
   const users = usersResponse?.data || [];
   const meta = usersResponse?.meta;
   const totalPage = meta?.totalPage || 1;
 
-  // --- Render Loading State ---
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-xl text-pink-400">
@@ -113,7 +100,6 @@ const UserManagementPage = ({ userType }: UserManagementPageProps) => {
     );
   }
 
-  // --- Main Component Render ---
   return (
     <div className="text-gray-800 space-y-6">
       {/* Header */}
