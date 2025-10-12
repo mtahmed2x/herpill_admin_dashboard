@@ -43,12 +43,13 @@ export const userApi = baseApi.injectEndpoints({
 
     getAllUser: builder.query<
       AllUsersResponseData,
-      { page?: number; limit?: number }
+      { page?: number; limit?: number; isStaff?: boolean }
     >({
-      query: ({ page, limit } = {}) => {
+      query: ({ page, limit, isStaff } = {}) => {
         const params = new URLSearchParams();
         if (page) params.append("page", page.toString());
         if (limit) params.append("limit", limit.toString());
+        if (isStaff) params.append("staff", "true");
 
         return `user?${params.toString()}`;
       },
@@ -102,6 +103,14 @@ export const userApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: [{ type: "Users", id: "LIST" }],
     }),
+
+    deleteUser: builder.mutation<ApiResponse<null>, string>({
+      query: (id) => ({
+        url: `user/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: [{ type: "Users", id: "LIST" }],
+    }),
   }),
 });
 
@@ -112,4 +121,5 @@ export const {
   useGetAllUserQuery,
   useGetUserByIdQuery,
   useToggleUserStatusMutation,
+  useDeleteUserMutation,
 } = userApi;

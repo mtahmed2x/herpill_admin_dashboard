@@ -25,7 +25,7 @@ interface ErrorResponse {
 
 export type ApiResponse<T> = SuccessResponse<T> | ErrorResponse;
 
-export type UserRole = "admin" | "user";
+export type UserRole = "admin" | "user" | "staff";
 export type Gender = "male" | "female" | "not-stated" | "non-binary" | "other";
 export type Sex = "male" | "female";
 

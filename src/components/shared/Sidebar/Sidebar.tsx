@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageCircleHeartIcon, Pill } from "lucide-react"; // <-- Import the Pill icon
+import { MessageCircleHeartIcon, Pill } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
@@ -8,8 +8,15 @@ import { CgProfile } from "react-icons/cg";
 import { FaTowerObservation } from "react-icons/fa6";
 import { FiChevronDown, FiChevronUp, FiSettings, FiUser } from "react-icons/fi";
 import { MdOutlineDashboard } from "react-icons/md";
+// 1. Import necessary hook from react-redux and RootState from your store
+import { useSelector } from "react-redux";
+// Assuming RootState is accessible or defined within your project scope
+// For this example, we'll use 'any' or assume RootState is imported if this file was outside /components
+import { RootState } from "@/store"; // <--- Assuming your store export path
+import { RiAdminFill } from "react-icons/ri"; // Using RiAdminFill for an admin icon (you might need to install 'react-icons/ri')
+// If RiAdminFill is not available, you can use FiSettings, or import it from lucide-react if available there.
 
-// NavItem Component
+// NavItem Component (No changes needed here, keeping for context)
 const NavItem = ({
   href,
   icon: Icon,
@@ -66,9 +73,19 @@ const NavItem = ({
 const Sidebar = () => {
   const router = useRouter();
 
+  // 2. Use useSelector to get the user's role from Redux state using RootState type
+  // This correctly accesses the role from state.auth.user.role
+  const userRole = useSelector((state: RootState) => {
+    console.log(state.auth);
+    return state.auth.user?.role;
+  });
+
+  const isAdmin = userRole === "admin";
+
   const handleSignOut = async () => {
     try {
-      // await logOut();
+      // Assuming you have a proper Redux action/thunk for logout
+      // dispatch(logoutUser()); // Replace this with your actual logOut logic
       router.push("/");
       toast.success("Signed out successfully");
     } catch (error) {
@@ -84,7 +101,6 @@ const Sidebar = () => {
         href="/dashboard"
         className="flex items-center justify-center gap-2 mb-8 p-4 border-b border-pink-200"
       >
-        {/* --- THIS IS THE NEW ICON --- */}
         <Pill className="h-8 w-8 text-pink-500" />
         <h1 className="text-2xl font-bold bg-gradient-to-r from-pink-500 to-pink-600 bg-clip-text text-transparent">
           HerPill
@@ -100,6 +116,16 @@ const Sidebar = () => {
               Dashboard
             </NavItem>
           </li>
+
+          {/* 4. Conditionally render the Admin Panel tab */}
+          {isAdmin && (
+            <li>
+              <NavItem href="/dashboard/staff" icon={RiAdminFill}>
+                Admin Panel
+              </NavItem>
+            </li>
+          )}
+
           <li>
             <NavItem href="/dashboard/user" icon={FiUser}>
               User
