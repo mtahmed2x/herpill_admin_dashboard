@@ -73,8 +73,6 @@ const NavItem = ({
 const Sidebar = () => {
   const router = useRouter();
 
-  // 2. Use useSelector to get the user's role from Redux state using RootState type
-  // This correctly accesses the role from state.auth.user.role
   const userRole = useSelector((state: RootState) => {
     console.log(state.auth);
     return state.auth.user?.role;
@@ -84,8 +82,6 @@ const Sidebar = () => {
 
   const handleSignOut = async () => {
     try {
-      // Assuming you have a proper Redux action/thunk for logout
-      // dispatch(logoutUser()); // Replace this with your actual logOut logic
       router.push("/");
       toast.success("Signed out successfully");
     } catch (error) {
