@@ -10,11 +10,11 @@ import {
   YAxis,
 } from "recharts";
 
-interface UserListProps {
+interface UserStatProps {
   monthlyStats: MonthlyUserStat[];
 }
 
-const UserList = ({ monthlyStats }: UserListProps) => {
+const UserStat = ({ monthlyStats }: UserStatProps) => {
   return (
     <div className="bg-white p-4 shadow-sm rounded-xl border-b-2 border-gray-400 text-gray-800">
       {/* Header */}
@@ -39,4 +39,4 @@ const UserList = ({ monthlyStats }: UserListProps) => {
   );
 };
 
-export default UserList;
+export default UserStat;

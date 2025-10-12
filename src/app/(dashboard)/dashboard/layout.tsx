@@ -4,6 +4,9 @@ import Sidebar from "@/components/shared/Sidebar/Sidebar";
 import Topbar from "@/components/shared/Topbar/Topbar";
 import { Poppins } from "next/font/google";
 import "../../globals.css";
+import { useEffect, useState } from "react";
+import { useSelector } from "react-redux";
+import { RootState } from "@/store";
 
 const PoppinsFont = Poppins({
   variable: "--font-poppins",
@@ -16,6 +19,18 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const [hasHydrated, setHasHydrated] = useState(false);
+  const isAuthenticated = useSelector(
+    (state: RootState) => state.auth.isAuthenticated
+  );
+  useEffect(() => {
+    if (!hasHydrated) {
+      setHasHydrated(true);
+    }
+  }, [hasHydrated]);
+
+  if (!hasHydrated && !isAuthenticated) {
+  }
   return (
     <div
       className={`${PoppinsFont.variable} font-sans min-h-screen bg-gray-100`}
