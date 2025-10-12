@@ -117,7 +117,7 @@ const Sidebar = () => {
           {isAdmin && (
             <li>
               <NavItem href="/dashboard/staff" icon={RiAdminFill}>
-                Admin Panel
+                Staffs
               </NavItem>
             </li>
           )}

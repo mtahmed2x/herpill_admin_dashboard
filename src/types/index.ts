@@ -1,5 +1,9 @@
 import { User } from "lucide-react";
 
+export type CreateStaffRequest = Pick<User, "email" | "firstName"> & {
+  password: string;
+};
+
 export interface PaginatedResponse<T> {
   success: true;
   message: string;
