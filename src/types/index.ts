@@ -55,15 +55,36 @@ export interface User {
 }
 
 export interface LoginRequest {
+  method: string;
   email: string;
   password: string;
   deviceToken?: string;
 }
-
-export interface LoginResponseData {
+export interface LoginSuccessData {
   user: User;
   accessToken: string;
   refreshToken: string;
+}
+
+export interface TwoFactorRequiredData {
+  status: "2fa_required";
+  userId: string;
+}
+
+export interface TwoFactorSetupData {
+  status: "2fa_setup_required";
+  userId: string;
+  qrCodeImageUrl: string;
+}
+
+export type LoginResponseData =
+  | LoginSuccessData
+  | TwoFactorRequiredData
+  | TwoFactorSetupData;
+
+export interface VerifyTwoFactorRequest {
+  userId: string;
+  token: string;
 }
 
 export interface DashboardStats {
@@ -125,6 +146,11 @@ export type ChatsResponseData = PaginatedResponse<Chat>;
 export type MessagesResponseData = PaginatedResponse<Message>;
 
 export type ServiceStatus = "pending" | "accept" | "decline";
+export enum DeliveryStatus {
+  Pending = "pending",
+  Started = "started",
+  Done = "done",
+}
 
 export interface Cocp {
   _id: string;
@@ -152,6 +178,7 @@ export interface Cocp {
   weightChecked: boolean;
   comment: string;
 
+  deliveryStatus: DeliveryStatus;
   status: ServiceStatus;
   createdAt?: string;
   updatedAt?: string;
@@ -173,6 +200,7 @@ export interface Pop {
   exclusions: string;
   needAppointment: boolean;
 
+  deliveryStatus: DeliveryStatus;
   status: ServiceStatus;
   createdAt?: string;
   updatedAt?: string;

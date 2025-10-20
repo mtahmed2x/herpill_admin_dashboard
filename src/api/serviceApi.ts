@@ -4,6 +4,7 @@ import {
   Pop,
   Cocp,
   ApiResponse,
+  DeliveryStatus,
 } from "@/types";
 import { baseApi } from "./api";
 
@@ -58,6 +59,24 @@ export const serviceApi = baseApi.injectEndpoints({
       ],
     }),
 
+    updatePopDeliveryStatus: builder.mutation<
+      ApiResponse<Pop>,
+      {
+        id: string;
+        deliveryStatus: DeliveryStatus.Started | DeliveryStatus.Done;
+      }
+    >({
+      query: ({ id, deliveryStatus }) => ({
+        url: `pop/update/${id}`,
+        method: "PATCH",
+        body: { deliveryStatus },
+      }),
+      invalidatesTags: (result, error, { id }) => [
+        { type: "Pops", id: "LIST" },
+        { type: "Pops", id },
+      ],
+    }),
+
     deletePop: builder.mutation<ApiResponse<Pop>, string>({
       query: (id) => ({
         url: `pop/delete/${id}`,
@@ -84,6 +103,24 @@ export const serviceApi = baseApi.injectEndpoints({
               { type: "Cocps", id: "LIST" },
             ]
           : [{ type: "Cocps", id: "LIST" }],
+    }),
+
+    updateCocpDeliveryStatus: builder.mutation<
+      ApiResponse<Cocp>,
+      {
+        id: string;
+        deliveryStatus: DeliveryStatus.Started | DeliveryStatus.Done;
+      }
+    >({
+      query: ({ id, deliveryStatus }) => ({
+        url: `cocp/update/${id}`,
+        method: "PATCH",
+        body: { deliveryStatus },
+      }),
+      invalidatesTags: (result, error, { id }) => [
+        { type: "Cocps", id: "LIST" },
+        { type: "Cocps", id },
+      ],
     }),
 
     updateCocpStatus: builder.mutation<
@@ -131,4 +168,6 @@ export const {
   useDeleteCocpMutation,
   useGetPopByIdQuery,
   useGetCocpByIdQuery,
+  useUpdatePopDeliveryStatusMutation,
+  useUpdateCocpDeliveryStatusMutation,
 } = serviceApi;

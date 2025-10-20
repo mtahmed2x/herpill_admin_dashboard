@@ -7,7 +7,7 @@ import {
 } from "@reduxjs/toolkit/query/react";
 import { RootState } from "../store";
 import { BASE_URL } from "../config/constants";
-import { ApiResponse, LoginResponseData } from "@/types";
+import { ApiResponse, LoginSuccessData } from "@/types";
 
 const baseQuery = fetchBaseQuery({
   baseUrl: BASE_URL,
@@ -39,7 +39,7 @@ const baseQueryWithReauth: BaseQueryFn<
         extraOptions
       );
 
-      const refreshData = refreshResult.data as ApiResponse<LoginResponseData>;
+      const refreshData = refreshResult.data as ApiResponse<LoginSuccessData>;
 
       if (refreshData?.success) {
         const { setCredentials } = await import("../features/auth/authSlice");

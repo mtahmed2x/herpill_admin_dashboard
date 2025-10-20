@@ -1,5 +1,11 @@
 import { baseApi } from "./api";
-import { ApiResponse, LoginRequest, LoginResponseData } from "@/types";
+import {
+  ApiResponse,
+  LoginRequest,
+  LoginResponseData,
+  LoginSuccessData,
+  VerifyTwoFactorRequest,
+} from "@/types";
 
 export const authApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -11,8 +17,19 @@ export const authApi = baseApi.injectEndpoints({
       }),
     }),
 
+    verifyTwoFactor: builder.mutation<
+      ApiResponse<LoginSuccessData>, // On success, it returns the user and tokens
+      VerifyTwoFactorRequest
+    >({
+      query: (credentials) => ({
+        url: "auth/verify-2fa",
+        method: "POST",
+        body: credentials,
+      }),
+    }),
+
     refreshToken: builder.mutation<
-      ApiResponse<LoginResponseData>,
+      ApiResponse<LoginSuccessData>,
       { refreshToken: string }
     >({
       query: ({ refreshToken }) => ({
@@ -24,4 +41,8 @@ export const authApi = baseApi.injectEndpoints({
   }),
 });
 
-export const { useLoginMutation, useRefreshTokenMutation } = authApi;
+export const {
+  useLoginMutation,
+  useVerifyTwoFactorMutation,
+  useRefreshTokenMutation,
+} = authApi;
