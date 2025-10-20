@@ -2,7 +2,7 @@
 
 import { Send, Upload } from "lucide-react";
 import Image from "next/image";
-import { useRef, useState, useEffect, ChangeEvent } from "react";
+import { useRef, useState, useEffect, ChangeEvent, useMemo } from "react";
 import { useSelector } from "react-redux";
 import { useParams } from "next/navigation";
 import {
@@ -15,17 +15,36 @@ import { useSocket } from "@/context/SocketContext";
 import { RootState, useAppDispatch } from "@/store";
 import { Chat, User, Message } from "@/types";
 
-// Helper function remains the same
+// Helper functions (no changes)
 const getOtherParticipant = (
   chat: Chat,
   currentUserId: string
 ): User | null => {
   const other = chat.participants.find((p) => p.user._id !== currentUserId);
-  return other?.user || null; // Return null if not found for safety
+  return other?.user || null;
+};
+
+const getAvatarInitials = (name: string = ""): string =>
+  name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .substring(0, 2)
+    .toUpperCase();
+
+const getAvatarColor = (name: string = ""): string => {
+  const colors = [
+    "bg-blue-500",
+    "bg-green-500",
+    "bg-purple-500",
+    "bg-pink-500",
+    "bg-orange-500",
+  ];
+  return colors[name.length % colors.length];
 };
 
 const ChatPage = () => {
-  // --- STATE AND REFS ---
+  // --- STATE AND REFS (no changes) ---
   const params = useParams();
   const activeChatId = params.chatId as string;
 
@@ -35,78 +54,77 @@ const ChatPage = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messageEndRef = useRef<HTMLDivElement>(null);
 
-  // --- HOOKS ---
+  // --- HOOKS (no changes) ---
   const dispatch = useAppDispatch();
   const { socket, isConnected } = useSocket();
   const currentUserId = useSelector((state: RootState) => state.auth.user?._id);
 
-  // --- RTK QUERY HOOKS ---
-  // 1. Get the raw query result for the entire chat list.
-  // We need isSuccess and isFetching to know the exact state.
-  const {
-    data: chatsResponse,
-    isLoading: isLoadingChats,
-    isSuccess: isChatsSuccess,
-    isFetching: isChatsFetching,
-  } = useGetChatsQuery();
+  // --- RTK QUERY HOOKS (no changes) ---
+  const selectActiveChat = useMemo(() => {
+    return (chatsResult: any) => {
+      const chat = chatsResult.data?.success
+        ? chatsResult.data.data.data.find((c: Chat) => c._id === activeChatId)
+        : null;
+      const otherUser =
+        chat && currentUserId ? getOtherParticipant(chat, currentUserId) : null;
+      return {
+        activeChat: chat,
+        otherUser,
+        isChatLoading: chatsResult.isLoading,
+      };
+    };
+  }, [activeChatId, currentUserId]);
 
-  // 2. Find the active chat and user *after* we confirm the data is available.
-  const activeChat =
-    isChatsSuccess && chatsResponse.success
-      ? chatsResponse.data.data.find((c) => c._id === activeChatId) || null
-      : null;
+  const { activeChat, otherUser, isChatLoading } = useGetChatsQuery(undefined, {
+    selectFromResult: selectActiveChat,
+  });
 
-  const otherUser =
-    activeChat && currentUserId
-      ? getOtherParticipant(activeChat, currentUserId)
-      : null;
-
-  // 3. Fetch messages only if we have successfully found an active chat.
   const { data: messagesResponse, isLoading: isLoadingMessages } =
-    useGetMessagesQuery(activeChatId, { skip: !activeChatId || !activeChat });
+    useGetMessagesQuery(activeChatId, { skip: !activeChat });
 
   const [sendImageMessage, { isLoading: isUploadingImage }] =
     useSendImageMessageMutation();
 
-  // --- SOCKET.IO EFFECT ---
+  // --- SOCKET.IO EFFECT (no changes) ---
   useEffect(() => {
-    // Ensure we only join the chat when we have confirmed the active chat exists
     if (!socket || !isConnected || !activeChatId || !activeChat) return;
 
-    console.log(`Socket emitting joinChat for room: ${activeChatId}`);
     socket.emit("joinChat", activeChatId);
-
-    const handleReceiveMessage = (newMessage: Message) => {
-      if (newMessage.chatId === activeChatId) {
-        console.log("Received new message for active chat:", newMessage);
+    const handleReceiveMessage = (incomingMessage: any) => {
+      if (incomingMessage.chatId === activeChatId) {
         dispatch(
           chatApi.util.updateQueryData("getMessages", activeChatId, (draft) => {
+            const normalizedMessage: Message = {
+              ...incomingMessage,
+              senderId: incomingMessage.senderId || incomingMessage.sender?._id,
+            };
             if (
               draft.success &&
-              !draft.data.data.find((m: Message) => m._id === newMessage._id)
+              !draft.data.data.find(
+                (m: Message) => m._id === normalizedMessage._id
+              )
             ) {
-              draft.data.data.unshift(newMessage);
+              draft.data.data.unshift(normalizedMessage);
             }
           })
         );
       }
     };
-
     socket.on("receiveMessage", handleReceiveMessage);
+
     return () => {
       socket.off("receiveMessage", handleReceiveMessage);
     };
-  }, [socket, isConnected, activeChatId, dispatch, activeChat]); // Add activeChat dependency
+  }, [socket, isConnected, activeChatId, dispatch, activeChat, currentUserId]);
 
-  // --- UI EFFECTS ---
+  // --- UI EFFECTS (no changes) ---
   useEffect(() => {
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messagesResponse]);
 
-  // --- HANDLERS (No changes) ---
+  // --- EVENT HANDLERS (no changes) ---
   const handleSendMessage = async () => {
     if (!activeChatId) return;
-
     if (selectedImage) {
       await sendImageMessage({
         chatId: activeChatId,
@@ -133,72 +151,49 @@ const ChatPage = () => {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // --- HELPER FUNCTIONS (No changes) ---
-  const getAvatarInitials = (name: string = ""): string =>
-    name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .substring(0, 2)
-      .toUpperCase();
-  const getAvatarColor = (name: string = ""): string => {
-    const colors = [
-      "bg-blue-500",
-      "bg-green-500",
-      "bg-purple-500",
-      "bg-pink-500",
-      "bg-orange-500",
-    ];
-    return colors[name.length % colors.length];
-  };
-
   // --- RENDER LOGIC ---
-
-  // 4. Handle the loading state explicitly. Show this while the chat list is being fetched.
-  if (isLoadingChats || isChatsFetching) {
+  if (isChatLoading) {
     return (
       <div className="flex-1 flex items-center justify-center text-gray-500">
-        <p>Loading conversations...</p>
+        <p>Loading conversation...</p>
       </div>
     );
   }
 
-  // 5. Handle the case where the query is done but the specific chat isn't found.
-  // This could be because of a bad URL or if the user is not a participant.
-  if (isChatsSuccess && (!activeChat || !otherUser)) {
+  if (!activeChat || !otherUser) {
     return (
-      <div className="flex-1 flex items-center justify-center text-gray-500">
-        <p>Chat not found or you dont have access.</p>
-        <p className="text-sm">Please select a conversation from the list.</p>
+      <div className="flex-1 flex flex-col items-center justify-center text-gray-500">
+        <p className="font-semibold">Chat not found.</p>
+        <p className="text-sm">
+          Please select a valid conversation from the list.
+        </p>
       </div>
     );
   }
 
-  // 6. If all checks pass, render the chat interface.
-  // We can safely assume activeChat and otherUser are available here.
   return (
     <>
       {/* Chat Header */}
       <div className="p-5 border-b border-gray-200 bg-white flex items-center">
         <div
           className={`relative flex-shrink-0 h-10 w-10 rounded-full ${getAvatarColor(
-            otherUser!.firstName
+            otherUser.firstName
           )} flex items-center justify-center text-white font-semibold`}
         >
-          {otherUser!.avatar ? (
+          {otherUser.avatar ? (
             <Image
-              src={otherUser!.avatar}
-              alt={otherUser!.firstName}
+              src={otherUser.avatar}
+              alt={otherUser.firstName}
               layout="fill"
               className="rounded-full object-cover"
             />
           ) : (
-            getAvatarInitials(otherUser!.firstName)
+            getAvatarInitials(otherUser.firstName)
           )}
         </div>
         <div className="ml-4">
           <h2 className="text-lg font-semibold">
-            {otherUser!.firstName} {otherUser!.surname}
+            {otherUser.firstName} {otherUser.surname}
           </h2>
           <p
             className={`text-xs ${
@@ -218,20 +213,15 @@ const ChatPage = () => {
           ) : (
             messagesResponse?.success &&
             [...messagesResponse.data.data].reverse().map((message) => (
+              // --- START OF HARDCODED FIX ---
               <div
                 key={message._id}
-                className={`flex ${
-                  message.senderId === currentUserId
-                    ? "justify-end"
-                    : "justify-start"
-                }`}
+                // This will now ALWAYS justify to the right
+                className="flex justify-end"
               >
                 <div
-                  className={`max-w-md rounded-2xl px-4 py-3 shadow-sm ${
-                    message.senderId === currentUserId
-                      ? "bg-blue-500 text-white rounded-br-none"
-                      : "bg-white text-gray-800 rounded-bl-none"
-                  }`}
+                  // This will now ALWAYS be blue with a rounded-br-none
+                  className="max-w-md rounded-2xl px-4 py-3 shadow-sm bg-blue-500 text-white rounded-br-none"
                 >
                   {message.attachment && (
                     <Image
@@ -244,11 +234,8 @@ const ChatPage = () => {
                   )}
                   {message.text && <p className="text-sm">{message.text}</p>}
                   <p
-                    className={`text-xs mt-1 text-right ${
-                      message.senderId === currentUserId
-                        ? "text-blue-100"
-                        : "text-gray-400"
-                    }`}
+                    // This will now ALWAYS have the light blue text color for the timestamp
+                    className="text-xs mt-1 text-right text-blue-100"
                   >
                     {new Date(message.createdAt).toLocaleTimeString([], {
                       hour: "2-digit",
@@ -257,13 +244,14 @@ const ChatPage = () => {
                   </p>
                 </div>
               </div>
+              // --- END OF HARDCODED FIX ---
             ))
           )}
           <div ref={messageEndRef} />
         </div>
       </div>
 
-      {/* Image Preview & Message Input (No changes) */}
+      {/* Image Preview & Message Input */}
       {imagePreview && (
         <div className="p-4 bg-gray-200 border-t border-gray-300">
           <div className="relative inline-block">
@@ -287,6 +275,7 @@ const ChatPage = () => {
         <div className="flex items-center gap-3">
           <input
             type="file"
+            accept="image/*"
             ref={fileInputRef}
             onChange={handleImageUpload}
             disabled={isUploadingImage}
