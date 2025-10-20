@@ -5,8 +5,16 @@ import toast from "react-hot-toast";
 import { User } from "@/types";
 import ActiveUser from "@/components/Dashboard/ActiveUser";
 import { useGetDashboardDataQuery } from "@/api/dashboardApi";
+import { useDispatch } from "react-redux";
+import { useEffect } from "react";
+import { clearTwoFactorUserId } from "@/features/auth/authSlice";
 
 const Dashboard = () => {
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    dispatch(clearTwoFactorUserId());
+  }, [dispatch]);
   const {
     data: dashboardResponse,
     isLoading,

@@ -191,6 +191,7 @@ const OurServicePage = () => {
               <th className="p-2 border border-pink-200">Name</th>
               <th className="p-2 border border-pink-200">Email</th>
               <th className="p-2 border border-pink-200">Phone</th>
+              <th className="p-2 border border-pink-200">Delivery Status</th>
               <th className="p-2 border border-pink-200">Action</th>
             </tr>
           </thead>
@@ -244,9 +245,21 @@ const OurServicePage = () => {
                       {user.phoneNumber || "N/A"}
                     </td>
                     <td className="p-2 border border-pink-200">
+                      {req.deliveryStatus
+                        ? req.deliveryStatus.charAt(0).toUpperCase() +
+                          req.deliveryStatus.slice(1)
+                        : "Pending"}
+                    </td>
+                    <td className="p-2 border border-pink-200">
                       <div className="flex gap-2 justify-center items-center">
                         {req.status === "pending" && (
                           <>
+                            <Link
+                              href={`/dashboard/our-service/${req._id}?type=${requestType}`}
+                              className="px-3 py-1 bg-blue-200 hover:bg-blue-500 text-blue-800 hover:text-white rounded border border-blue-300 transition-colors"
+                            >
+                              Details
+                            </Link>
                             <button
                               onClick={() =>
                                 handleStatusUpdate(req._id, "accept")

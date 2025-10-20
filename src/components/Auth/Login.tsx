@@ -6,13 +6,11 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import banner from "../../../public/login-bg.png";
-
 import { useDispatch } from "react-redux";
-
-import { LoginRequest } from "@/types";
+import { LoginRequest, LoginResponseData } from "@/types";
 import { requestNotificationPermissionAndGetToken } from "@/utils/notificationUtils";
 import { useLoginMutation } from "@/api/authApi";
-import { setCredentials } from "@/features/auth/authSlice";
+import { setCredentials, setTwoFactorUserId } from "@/features/auth/authSlice";
 
 type FormData = {
   email: string;
@@ -25,56 +23,57 @@ const Login = () => {
   const router = useRouter();
   const dispatch = useDispatch();
 
-  // RTK Query login mutation hook
   const [login, { isLoading, error }] = useLoginMutation();
 
   const {
     register,
     handleSubmit,
     formState: { errors },
-    setError, // To set form errors from the API response
+    setError,
   } = useForm<FormData>();
 
-  // submit handler
   const onSubmit = async (data: FormData) => {
     try {
       const deviceToken = await requestNotificationPermissionAndGetToken();
 
       if (!deviceToken) {
-        // You can decide how to handle this.
-        // Maybe alert the user that notifications won't work,
-        // but still allow them to log in.
         console.warn(
           "Could not get device token. Proceeding with login without it."
         );
       }
       const loginRequest: LoginRequest = {
+        method: "email",
         email: data.email,
         password: data.password,
         ...(deviceToken && { deviceToken }),
       };
 
-      const response = await login(loginRequest).unwrap(); // .unwrap() throws an error if the request fails
+      const response = await login(loginRequest).unwrap();
 
       if (response.success) {
-        // Dispatch credentials to the Redux store
-        dispatch(setCredentials(response.data));
-        router.push("/dashboard");
+        const responseData = response.data as LoginResponseData;
+        if ("status" in responseData) {
+          if (responseData.status === "2fa_setup_required") {
+            dispatch(setTwoFactorUserId(responseData.userId));
+            router.push(
+              `/2fa-setup?qr=${encodeURIComponent(responseData.qrCodeImageUrl)}`
+            );
+          } else if (responseData.status === "2fa_required") {
+            dispatch(setTwoFactorUserId(responseData.userId));
+            router.push("/2fa-verify");
+          }
+        } else {
+          dispatch(setCredentials(responseData));
+          router.push("/dashboard");
+        }
       } else {
-        // Handle API-specific errors (e.g., wrong credentials)
         setError("email", {
           type: "manual",
           message: response.message || "Login failed. Please try again.",
         });
-        setError("password", {
-          type: "manual",
-          message: "", // Clear password error if email is the main issue
-        });
       }
     } catch (err: any) {
       console.error("Login error:", err);
-      // Handle network errors or other unexpected errors
-      // The `error` object from useLoginMutation will also contain this
       if (err.status === 401) {
         setError("email", {
           type: "manual",

@@ -1,7 +1,12 @@
 "use client";
 
-import { useGetPopByIdQuery, useGetCocpByIdQuery } from "@/api/serviceApi";
-import { Pop, Cocp, User } from "@/types";
+import {
+  useGetPopByIdQuery,
+  useGetCocpByIdQuery,
+  useUpdatePopDeliveryStatusMutation,
+  useUpdateCocpDeliveryStatusMutation,
+} from "@/api/serviceApi";
+import { Pop, Cocp, User, DeliveryStatus } from "@/types";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import {
@@ -13,6 +18,7 @@ import {
   Phone,
   Pill,
   User as UserIcon,
+  Truck,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Link from "next/link";
@@ -74,32 +80,34 @@ const ServiceDetailsPage = () => {
     isError: isCocpError,
   } = useGetCocpByIdQuery(id, { skip: type !== "cocp" });
 
+  const [updatePopStatus, { isLoading: isPopUpdateLoading }] =
+    useUpdatePopDeliveryStatusMutation();
+  const [updateCocpStatus, { isLoading: isCocpUpdateLoading }] =
+    useUpdateCocpDeliveryStatusMutation();
+  const isUpdating = isPopUpdateLoading || isCocpUpdateLoading;
+
   const isLoading = isPopLoading || isCocpLoading;
   const isError = isPopError || isCocpError;
   const response = type === "pop" ? popResponse : cocpResponse;
 
-  if (!type) {
-    return (
-      <div className="p-8 text-center text-red-500">
-        Error: Service type is missing from the URL.
-      </div>
-    );
-  }
-  if (isLoading) {
+  if (isLoading)
     return (
       <div className="p-8 text-center text-pink-500">
         Loading service request details...
       </div>
     );
-  }
-  if (isError || !response?.success) {
-    toast.error("Failed to load service details.");
+  if (!type)
+    return (
+      <div className="p-8 text-center text-red-500">
+        Error: Service type is missing.
+      </div>
+    );
+  if (!response?.success)
     return (
       <div className="p-8 text-center text-red-500">
         Could not find the requested service.
       </div>
     );
-  }
 
   const requestData = response.data as Pop | Cocp;
   const user = requestData.userId as User;
@@ -110,6 +118,30 @@ const ServiceDetailsPage = () => {
     month: "long",
     day: "numeric",
   });
+
+  // Format date of birth if available
+  const dateOfBirthFormatted = user.dateOfBirth
+    ? new Date(user.dateOfBirth).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    : null;
+
+  const handleUpdateDeliveryStatus = async (
+    newStatus: DeliveryStatus.Started | DeliveryStatus.Done
+  ) => {
+    const promise =
+      type === "pop"
+        ? updatePopStatus({ id, deliveryStatus: newStatus }).unwrap()
+        : updateCocpStatus({ id, deliveryStatus: newStatus }).unwrap();
+
+    toast.promise(promise, {
+      loading: "Updating delivery status...",
+      success: "Status updated successfully!",
+      error: "Failed to update status.",
+    });
+  };
 
   return (
     <div className="p-6 bg-pink-50/70 min-h-screen text-gray-800">
@@ -179,7 +211,7 @@ const ServiceDetailsPage = () => {
             <Pill /> Contraception Request Details
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {/* Common Fields */}
+            {/* Common Fields from requestData */}
             <DetailItem label="Consent Given" value={requestData.consent} />
             <DetailItem
               label="Consent to Share with GP"
@@ -215,6 +247,70 @@ const ServiceDetailsPage = () => {
                 requestData.status.charAt(0).toUpperCase() +
                 requestData.status.slice(1)
               }
+            />
+
+            <DetailItem
+              label="Delivery Status"
+              value={
+                requestData.deliveryStatus
+                  ? requestData.deliveryStatus.charAt(0).toUpperCase() +
+                    requestData.deliveryStatus.slice(1)
+                  : "Pending"
+              }
+            />
+
+            {requestData.status === "accept" && (
+              <section>
+                <h2 className="text-xl font-semibold mb-6 flex items-center gap-3">
+                  <Truck /> Delivery Management
+                </h2>
+                <div className="p-6 bg-gray-50 rounded-lg border border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-6">
+                  <div>
+                    <p className="text-sm text-gray-500">
+                      Current Delivery Status
+                    </p>
+                    <p className="text-lg font-bold text-pink-600 mt-1 capitalize">
+                      {requestData.deliveryStatus || "Pending"}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <button
+                      onClick={() =>
+                        handleUpdateDeliveryStatus(DeliveryStatus.Started)
+                      }
+                      disabled={
+                        isUpdating ||
+                        requestData.deliveryStatus === "started" ||
+                        requestData.deliveryStatus === "done"
+                      }
+                      className="px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition"
+                    >
+                      {isUpdating ? "Updating..." : "Mark as Started"}
+                    </button>
+                    <button
+                      onClick={() =>
+                        handleUpdateDeliveryStatus(DeliveryStatus.Done)
+                      }
+                      disabled={
+                        isUpdating || requestData.deliveryStatus === "done"
+                      }
+                      className="px-4 py-2 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition"
+                    >
+                      {isUpdating ? "Updating..." : "Mark as Done"}
+                    </button>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {/* NEW: User-specific details */}
+            <DetailItem label="Date of Birth" value={dateOfBirthFormatted} />
+            <DetailItem label="Gender" value={user.gender} />
+            <DetailItem label="Sex" value={user.sex} />
+            <DetailItem label="NHS Number" value={user.nhs} />
+            <DetailItem
+              label="Current Contraception"
+              value={user.contraception}
             />
 
             {/* Conditional Fields for POP vs COCP */}
