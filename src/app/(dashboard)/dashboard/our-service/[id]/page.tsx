@@ -136,11 +136,11 @@ const ServiceDetailsPage = () => {
         ? updatePopStatus({ id, deliveryStatus: newStatus }).unwrap()
         : updateCocpStatus({ id, deliveryStatus: newStatus }).unwrap();
 
-    toast.promise(promise, {
-      loading: "Updating delivery status...",
-      success: "Status updated successfully!",
-      error: "Failed to update status.",
-    });
+    // toast.promise(promise, {
+    //   loading: "Updating delivery status...",
+    //   success: "Status updated successfully!",
+    //   error: "Failed to update status.",
+    // });
   };
 
   return (
