@@ -15,6 +15,7 @@ const Dashboard = () => {
   useEffect(() => {
     dispatch(clearTwoFactorUserId());
   }, [dispatch]);
+  
   const {
     data: dashboardResponse,
     isLoading,

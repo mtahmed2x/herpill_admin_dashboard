@@ -43,7 +43,6 @@ const TwoFactorSetupPage = () => {
     }
   };
 
-  // Render a loading state or null while redirecting
   if (!twoFactorUserId || !qrCodeImageUrl) {
     return null;
   }
