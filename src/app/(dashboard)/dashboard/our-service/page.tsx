@@ -15,8 +15,7 @@ import { useState } from "react";
 import toast from "react-hot-toast";
 import Swal from "sweetalert2";
 
-// Define the Service Status enum
-export enum ServiceStatus {
+enum ServiceStatus {
   Pending = "pending",
   Accept = "accept",
   Decline = "decline",
