@@ -85,7 +85,6 @@ const ChatPage = () => {
   const [sendImageMessage, { isLoading: isUploadingImage }] =
     useSendImageMessageMutation();
 
-  // --- SOCKET.IO EFFECT (no changes) ---
   useEffect(() => {
     if (!socket || !isConnected || !activeChatId || !activeChat) return;
 
@@ -117,12 +116,10 @@ const ChatPage = () => {
     };
   }, [socket, isConnected, activeChatId, dispatch, activeChat, currentUserId]);
 
-  // --- UI EFFECTS (no changes) ---
   useEffect(() => {
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messagesResponse]);
 
-  // --- EVENT HANDLERS (no changes) ---
   const handleSendMessage = async () => {
     if (!activeChatId) return;
     if (selectedImage) {
@@ -151,8 +148,7 @@ const ChatPage = () => {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // --- RENDER LOGIC ---
-  if (isChatLoading) {
+  if (isChatLoading || !currentUserId) {
     return (
       <div className="flex-1 flex items-center justify-center text-gray-500">
         <p>Loading conversation...</p>
@@ -212,40 +208,64 @@ const ChatPage = () => {
             <p className="text-center text-gray-500">Loading messages...</p>
           ) : (
             messagesResponse?.success &&
-            [...messagesResponse.data.data].reverse().map((message) => (
-              // --- START OF HARDCODED FIX ---
-              <div
-                key={message._id}
-                // This will now ALWAYS justify to the right
-                className="flex justify-end"
-              >
+            [...messagesResponse.data.data].reverse().map((message) => {
+              let messageSenderId;
+
+              if (typeof message.senderId === "string") {
+                messageSenderId = message.senderId;
+              } else if (
+                typeof message.senderId === "object" &&
+                message.senderId !== null &&
+                message.senderId._id
+              ) {
+                messageSenderId = message.senderId._id;
+              }
+
+              console.log("sender ", message);
+              console.log("current user" + currentUserId);
+
+              const isCurrentUser = messageSenderId === currentUserId;
+
+              return (
                 <div
-                  // This will now ALWAYS be blue with a rounded-br-none
-                  className="max-w-md rounded-2xl px-4 py-3 shadow-sm bg-blue-500 text-white rounded-br-none"
+                  key={message._id}
+                  // 3. Justify right for current user, left for other user
+                  className={`flex ${
+                    isCurrentUser ? "justify-end" : "justify-start"
+                  }`}
                 >
-                  {message.attachment && (
-                    <Image
-                      src={message.attachment as unknown as string}
-                      alt="attachment"
-                      width={250}
-                      height={250}
-                      className="rounded-lg mb-2 object-cover"
-                    />
-                  )}
-                  {message.text && <p className="text-sm">{message.text}</p>}
-                  <p
-                    // This will now ALWAYS have the light blue text color for the timestamp
-                    className="text-xs mt-1 text-right text-blue-100"
+                  <div
+                    className={`max-w-md rounded-2xl px-4 py-3 shadow-sm ${
+                      isCurrentUser
+                        ? "bg-blue-500 text-white rounded-br-none" // Outgoing
+                        : "bg-gray-200 text-gray-800 rounded-bl-none" // Incoming
+                    }`}
                   >
-                    {new Date(message.createdAt).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </p>
+                    {message.attachment && (
+                      <Image
+                        src={message.attachment as unknown as string}
+                        alt="attachment"
+                        width={250}
+                        height={250}
+                        className="rounded-lg mb-2 object-cover"
+                      />
+                    )}
+                    {message.text && <p className="text-sm">{message.text}</p>}
+                    <p
+                      // 5. Adjust timestamp color
+                      className={`text-xs mt-1 text-right ${
+                        isCurrentUser ? "text-blue-100" : "text-gray-500"
+                      }`}
+                    >
+                      {new Date(message.createdAt).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  </div>
                 </div>
-              </div>
-              // --- END OF HARDCODED FIX ---
-            ))
+              );
+            })
           )}
           <div ref={messageEndRef} />
         </div>

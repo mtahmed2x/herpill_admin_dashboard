@@ -127,10 +127,17 @@ export interface Chat {
   updatedAt: string;
 }
 
+export type SendMessage = {
+  _id: string;
+  firstName: string;
+  role: string;
+  surname: string;
+};
+
 export interface Message {
   _id: string;
   chatId: string;
-  senderId: string;
+  senderId: string | SendMessage;
   text?: string;
   attachment?: string;
   createdAt: string;
