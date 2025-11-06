@@ -37,7 +37,7 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
 
   useEffect(() => {
     if (accessToken) {
-      const newSocket = io("ws://localhost:5000", {
+      const newSocket = io("https://api.herpill.co.uk", {
         auth: {
           token: accessToken,
         },

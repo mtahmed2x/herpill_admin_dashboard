@@ -8,17 +8,39 @@ import {
   useUpdatePopStatusMutation,
   useUpdateCocpStatusMutation,
 } from "@/api/serviceApi";
-import { Pop, Cocp, User } from "@/types";
+import { Pop, Cocp, User, DeliveryStatus} from "@/types"; // Import new types
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import toast from "react-hot-toast";
 import Swal from "sweetalert2";
 
+// Enum for the *approval* status
+// (This was already in your file)
 enum ServiceStatus {
   Pending = "pending",
   Accept = "accept",
   Decline = "decline",
+}
+
+// Enum for the *delivery* status
+// (This was at the bottom of your file, make sure it's accessible)
+// We'll assume it's imported from @/types
+/*
+export enum DeliveryStatus {
+  Pending = "pending",
+  Started = "started",
+  Done = "done",
+}
+*/
+
+// --- NEW ENUM ---
+// This enum defines the state of the UI tabs
+enum TabStatus {
+  Pending = "pending",
+  Accept = "accept",
+  Decline = "decline",
+  Done = "done", // The new tab
 }
 
 // --- Utility function to format ISO date string ---
@@ -46,22 +68,20 @@ const OurServicePage = () => {
   const [activeServiceTab, setActiveServiceTab] = useState<"POP" | "COCP">(
     "POP"
   );
-  const [activeStatusTab, setActiveStatusTab] = useState<ServiceStatus>(
-    ServiceStatus.Pending
+  // --- MODIFIED ---
+  // Use the new TabStatus enum for this state
+  const [activeStatusTab, setActiveStatusTab] = useState<TabStatus>(
+    TabStatus.Pending
   );
 
-  // Pagination state is maintained, but we'll apply it after filtering.
-  // NOTE: For client-side filtering and pagination, we only need page,
-  // the 'limit' is handled locally now.
+  // Pagination state
   const [popPage, setPopPage] = useState(1);
   const [cocpPage, setCocpPage] = useState(1);
-  const localLimit = 10; // Items per page for frontend pagination
+  const localLimit = 10; // Items per page
 
-  // --- RTK Query Data Fetching Hooks (MODIFIED) ---
-  // The API calls now omit the 'status' parameter to fetch all items.
-
-  const popQueryParams = { page: 1, limit: 1000 }; // Fetch a large enough set or all
-  const cocpQueryParams = { page: 1, limit: 1000 }; // Fetch a large enough set or all
+  // --- RTK Query Data Fetching Hooks ---
+  const popQueryParams = { page: 1, limit: 1000 };
+  const cocpQueryParams = { page: 1, limit: 1000 };
 
   const {
     data: popResponse,
@@ -95,14 +115,14 @@ const OurServicePage = () => {
 
   const handleServiceTabChange = (tab: "POP" | "COCP") => {
     setActiveServiceTab(tab);
-    // When changing service tab, reset page to 1
     setPopPage(1);
     setCocpPage(1);
   };
 
-  const handleStatusTabChange = (status: ServiceStatus) => {
+  // --- MODIFIED ---
+  // Update the parameter type to use TabStatus
+  const handleStatusTabChange = (status: TabStatus) => {
     setActiveStatusTab(status);
-    // When changing status tab, reset page to 1
     if (activeServiceTab === "POP") {
       setPopPage(1);
     } else {
@@ -162,13 +182,32 @@ const OurServicePage = () => {
   const isError = activeServiceTab === "POP" ? isPopError : isCocpError;
   const responseData = activeServiceTab === "POP" ? popResponse : cocpResponse;
 
-  // 1. Get ALL data from the response (ignoring API-side meta/pagination)
   const allRequests = responseData?.data || [];
 
-  // 2. Filter data based on active status tab
-  const filteredRequests = allRequests.filter(
-    (req: Pop | Cocp) => req.status === activeStatusTab
-  );
+  // --- MODIFIED: FILTERING LOGIC ---
+  // Filter data based on the activeStatusTab (which now includes 'Done')
+  const filteredRequests = allRequests.filter((req: Pop | Cocp) => {
+    switch (activeStatusTab) {
+      case TabStatus.Pending:
+        return req.status === ServiceStatus.Pending;
+      case TabStatus.Decline:
+        return req.status === ServiceStatus.Decline;
+      case TabStatus.Accept:
+        // "Accepted" tab now shows items that are accepted BUT NOT done
+        return (
+          req.status === ServiceStatus.Accept &&
+          req.deliveryStatus !== DeliveryStatus.Done
+        );
+      case TabStatus.Done:
+        // "Done" tab shows items that are accepted AND delivery is done
+        return (
+          req.status === ServiceStatus.Accept &&
+          req.deliveryStatus === DeliveryStatus.Done
+        );
+      default:
+        return false;
+    }
+  });
 
   // 3. Apply Local Pagination
   const currentPage = activeServiceTab === "POP" ? popPage : cocpPage;
@@ -185,12 +224,41 @@ const OurServicePage = () => {
     return typeof user === "object" ? user : { _id: user };
   };
 
-  // --- Status Tab Data for Rendering ---
-  const statusTabs: { label: string; status: ServiceStatus }[] = [
-    { label: "Pending", status: ServiceStatus.Pending },
-    { label: "Accepted", status: ServiceStatus.Accept },
-    { label: "Declined", status: ServiceStatus.Decline },
+  // --- MODIFIED: Status Tab Data ---
+  // Use the new TabStatus enum
+  const statusTabs: { label: string; status: TabStatus }[] = [
+    { label: "Pending", status: TabStatus.Pending },
+    { label: "Accepted", status: TabStatus.Accept },
+    { label: "Declined", status: TabStatus.Decline },
+    { label: "Delivery Done", status: TabStatus.Done }, // New tab
   ];
+
+  // --- NEW: Helper function for tab counts ---
+  // This correctly counts items for the new tab logic
+  const getTabCount = (status: TabStatus): number => {
+    switch (status) {
+      case TabStatus.Pending:
+        return allRequests.filter((r) => r.status === ServiceStatus.Pending)
+          .length;
+      case TabStatus.Decline:
+        return allRequests.filter((r) => r.status === ServiceStatus.Decline)
+          .length;
+      case TabStatus.Accept:
+        return allRequests.filter(
+          (r) =>
+            r.status === ServiceStatus.Accept &&
+            r.deliveryStatus !== DeliveryStatus.Done
+        ).length;
+      case TabStatus.Done:
+        return allRequests.filter(
+          (r) =>
+            r.status === ServiceStatus.Accept &&
+            r.deliveryStatus === DeliveryStatus.Done
+        ).length;
+      default:
+        return 0;
+    }
+  };
 
   // --- Component Render ---
   return (
@@ -254,8 +322,9 @@ const OurServicePage = () => {
         </div>
       </div>
 
-      {/* Status Tabs (Pending/Accepted/Declined) */}
-      <div className="flex justify-center space-x-4 mb-16">
+      {/* --- MODIFIED: Status Tabs --- */}
+      {/* Now maps all four tabs and uses getTabCount */}
+      <div className="flex justify-center flex-wrap gap-4 mb-16">
         {statusTabs.map((tab) => (
           <button
             key={tab.status}
@@ -267,8 +336,7 @@ const OurServicePage = () => {
                   : "bg-gray-100 text-gray-700 hover:bg-fuchsia-200"
               }`}
           >
-            {tab.label} (
-            {allRequests.filter((r) => r.status === tab.status).length})
+            {tab.label} ({getTabCount(tab.status)}) {/* Use helper function */}
           </button>
         ))}
       </div>
@@ -278,6 +346,7 @@ const OurServicePage = () => {
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold">
             {activeServiceTab} Requests –{" "}
+            {/* This logic still works for the new "Done" tab */}
             {activeStatusTab.charAt(0).toUpperCase() + activeStatusTab.slice(1)}
           </h2>
           {isFetching && (
@@ -325,7 +394,6 @@ const OurServicePage = () => {
               requestsToDisplay.map((req: Pop | Cocp) => {
                 const user = getUser(req.userId);
                 const requestType = activeServiceTab.toLowerCase();
-                // Assumed 'createdAt' exists and is a string
                 const { date, time } = formatDateTime(req.createdAt || "");
 
                 return (
@@ -361,7 +429,13 @@ const OurServicePage = () => {
                     </td>
                     <td className="p-2 border border-pink-200">
                       <div className="flex gap-2 justify-center items-center">
-                        {/* Only show Accept/Decline buttons for Pending status */}
+                        {/* Button logic remains the same.
+                          - "Pending" tab shows "Accept/Decline".
+                          - "Accepted", "Declined", and new "Done" tabs 
+                            will all trigger the second block (Details/Delete)
+                            because their `req.status` is not "pending".
+                            This is the correct behavior.
+                        */}
                         {req.status === ServiceStatus.Pending && (
                           <>
                             <Link
@@ -390,7 +464,6 @@ const OurServicePage = () => {
                             </button>
                           </>
                         )}
-                        {/* Show Details and Delete buttons for Accepted/Declined status */}
                         {(req.status === ServiceStatus.Accept ||
                           req.status === ServiceStatus.Decline) && (
                           <>
@@ -417,7 +490,7 @@ const OurServicePage = () => {
           </tbody>
         </table>
 
-        {/* Pagination Controls */}
+        {/* Pagination Controls (No changes needed) */}
         {!isLoading && !isError && totalPage > 1 && (
           <div className="flex justify-end items-center mt-6 space-x-2">
             <button
@@ -445,3 +518,4 @@ const OurServicePage = () => {
 };
 
 export default OurServicePage;
+
