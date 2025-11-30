@@ -186,6 +186,7 @@ export interface Cocp {
   comment: string;
 
   deliveryStatus: DeliveryStatus;
+  deliveredBy?: string;
   status: ServiceStatus;
   createdAt?: string;
   updatedAt?: string;
@@ -208,6 +209,7 @@ export interface Pop {
   needAppointment: boolean;
 
   deliveryStatus: DeliveryStatus;
+  deliveredBy?: string;
   status: ServiceStatus;
   createdAt?: string;
   updatedAt?: string;

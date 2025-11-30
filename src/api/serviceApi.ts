@@ -35,12 +35,12 @@ export const serviceApi = baseApi.injectEndpoints({
       providesTags: (result) =>
         result
           ? [
-              ...result.data.map(({ _id }) => ({
-                type: "Pops" as const,
-                id: _id,
-              })),
-              { type: "Pops", id: "LIST" },
-            ]
+            ...result.data.map(({ _id }) => ({
+              type: "Pops" as const,
+              id: _id,
+            })),
+            { type: "Pops", id: "LIST" },
+          ]
           : [{ type: "Pops", id: "LIST" }],
     }),
 
@@ -64,12 +64,13 @@ export const serviceApi = baseApi.injectEndpoints({
       {
         id: string;
         deliveryStatus: DeliveryStatus.Started | DeliveryStatus.Done;
+        deliveredBy?: string;
       }
     >({
-      query: ({ id, deliveryStatus }) => ({
+      query: ({ id, deliveryStatus, deliveredBy }) => ({
         url: `pop/update/${id}`,
         method: "PATCH",
-        body: { deliveryStatus },
+        body: { deliveryStatus, deliveredBy },
       }),
       invalidatesTags: (result, error, { id }) => [
         { type: "Pops", id: "LIST" },
@@ -96,12 +97,12 @@ export const serviceApi = baseApi.injectEndpoints({
       providesTags: (result) =>
         result
           ? [
-              ...result.data.map(({ _id }) => ({
-                type: "Cocps" as const,
-                id: _id,
-              })),
-              { type: "Cocps", id: "LIST" },
-            ]
+            ...result.data.map(({ _id }) => ({
+              type: "Cocps" as const,
+              id: _id,
+            })),
+            { type: "Cocps", id: "LIST" },
+          ]
           : [{ type: "Cocps", id: "LIST" }],
     }),
 
@@ -110,12 +111,13 @@ export const serviceApi = baseApi.injectEndpoints({
       {
         id: string;
         deliveryStatus: DeliveryStatus.Started | DeliveryStatus.Done;
+        deliveredBy?: string;
       }
     >({
-      query: ({ id, deliveryStatus }) => ({
+      query: ({ id, deliveryStatus, deliveredBy }) => ({
         url: `cocp/update/${id}`,
         method: "PATCH",
-        body: { deliveryStatus },
+        body: { deliveryStatus, deliveredBy },
       }),
       invalidatesTags: (result, error, { id }) => [
         { type: "Cocps", id: "LIST" },

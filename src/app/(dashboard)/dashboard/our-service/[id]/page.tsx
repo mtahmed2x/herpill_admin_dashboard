@@ -6,6 +6,7 @@ import {
   useUpdatePopDeliveryStatusMutation,
   useUpdateCocpDeliveryStatusMutation,
 } from "@/api/serviceApi";
+import { useGetAllUserQuery } from "@/api/userApi";
 import { Pop, Cocp, User, DeliveryStatus } from "@/types";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
@@ -22,6 +23,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Link from "next/link";
+import { useState } from "react";
 
 // Reusable component for displaying key-value pairs
 const DetailItem = ({
@@ -36,9 +38,8 @@ const DetailItem = ({
   if (value === true || value === false) {
     displayValue = (
       <div
-        className={`flex items-center gap-1.5 font-semibold ${
-          value ? "text-green-600" : "text-red-600"
-        }`}
+        className={`flex items-center gap-1.5 font-semibold ${value ? "text-green-600" : "text-red-600"
+          }`}
       >
         {value ? <CheckCircle size={16} /> : <XCircle size={16} />}
         <span>{value ? "Yes" : "No"}</span>
@@ -79,6 +80,15 @@ const ServiceDetailsPage = () => {
     isLoading: isCocpLoading,
     isError: isCocpError,
   } = useGetCocpByIdQuery(id, { skip: type !== "cocp" });
+
+  // Fetch staff members
+  const { data: staffResponse, isLoading: isStaffLoading } = useGetAllUserQuery({
+    isStaff: true,
+    limit: 1000,
+  });
+  const staffList = staffResponse?.data || [];
+
+  const [selectedStaff, setSelectedStaff] = useState<string>("");
 
   const [updatePopStatus, { isLoading: isPopUpdateLoading }] =
     useUpdatePopDeliveryStatusMutation();
@@ -122,25 +132,43 @@ const ServiceDetailsPage = () => {
   // Format date of birth if available
   const dateOfBirthFormatted = user.dateOfBirth
     ? new Date(user.dateOfBirth).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })
     : null;
 
   const handleUpdateDeliveryStatus = async (
     newStatus: DeliveryStatus.Started | DeliveryStatus.Done
   ) => {
+    if (newStatus === DeliveryStatus.Done && !selectedStaff) {
+      toast.error("Please select a staff member who delivered the service.");
+      return;
+    }
+
+    // Find the staff name from the ID if needed, or just pass the name if the value is the name.
+    // The requirement says "their name will be shown in dropdown... and sent the name choosen"
+    // Assuming selectedStaff holds the name. If it holds ID, we need to find the name.
+    // Let's assume the dropdown values are names for simplicity as per "sent the name choosen".
+
     const promise =
       type === "pop"
-        ? updatePopStatus({ id, deliveryStatus: newStatus }).unwrap()
-        : updateCocpStatus({ id, deliveryStatus: newStatus }).unwrap();
+        ? updatePopStatus({
+          id,
+          deliveryStatus: newStatus,
+          deliveredBy: newStatus === DeliveryStatus.Done ? selectedStaff : undefined,
+        }).unwrap()
+        : updateCocpStatus({
+          id,
+          deliveryStatus: newStatus,
+          deliveredBy: newStatus === DeliveryStatus.Done ? selectedStaff : undefined,
+        }).unwrap();
 
-    // toast.promise(promise, {
-    //   loading: "Updating delivery status...",
-    //   success: "Status updated successfully!",
-    //   error: "Failed to update status.",
-    // });
+    toast.promise(promise as any, {
+      loading: "Updating delivery status...",
+      success: "Status updated successfully!",
+      error: "Failed to update status.",
+    });
   };
 
   return (
@@ -254,7 +282,7 @@ const ServiceDetailsPage = () => {
               value={
                 requestData.deliveryStatus
                   ? requestData.deliveryStatus.charAt(0).toUpperCase() +
-                    requestData.deliveryStatus.slice(1)
+                  requestData.deliveryStatus.slice(1)
                   : "Pending"
               }
             />
@@ -264,41 +292,75 @@ const ServiceDetailsPage = () => {
                 <h2 className="text-xl font-semibold mb-6 flex items-center gap-3">
                   <Truck /> Delivery Management
                 </h2>
-                <div className="p-6 bg-gray-50 rounded-lg border border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-6">
-                  <div>
-                    <p className="text-sm text-gray-500">
-                      Current Delivery Status
-                    </p>
-                    <p className="text-lg font-bold text-pink-600 mt-1 capitalize">
-                      {requestData.deliveryStatus || "Pending"}
-                    </p>
+                <div className="p-6 bg-gray-50 rounded-lg border border-gray-200 flex flex-col gap-6">
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
+                    <div>
+                      <p className="text-sm text-gray-500">
+                        Current Delivery Status
+                      </p>
+                      <p className="text-lg font-bold text-pink-600 mt-1 capitalize">
+                        {requestData.deliveryStatus || "Pending"}
+                      </p>
+                      {requestData.deliveredBy && (
+                        <p className="text-sm text-gray-600 mt-1">
+                          Delivered by: <span className="font-medium">{requestData.deliveredBy}</span>
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <button
+                        onClick={() =>
+                          handleUpdateDeliveryStatus(DeliveryStatus.Started)
+                        }
+                        disabled={
+                          isUpdating ||
+                          requestData.deliveryStatus === "started" ||
+                          requestData.deliveryStatus === "done"
+                        }
+                        className="px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition"
+                      >
+                        {isUpdating ? "Updating..." : "Mark as Started"}
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <button
-                      onClick={() =>
-                        handleUpdateDeliveryStatus(DeliveryStatus.Started)
-                      }
-                      disabled={
-                        isUpdating ||
-                        requestData.deliveryStatus === "started" ||
-                        requestData.deliveryStatus === "done"
-                      }
-                      className="px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition"
-                    >
-                      {isUpdating ? "Updating..." : "Mark as Started"}
-                    </button>
-                    <button
-                      onClick={() =>
-                        handleUpdateDeliveryStatus(DeliveryStatus.Done)
-                      }
-                      disabled={
-                        isUpdating || requestData.deliveryStatus === "done"
-                      }
-                      className="px-4 py-2 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition"
-                    >
-                      {isUpdating ? "Updating..." : "Mark as Done"}
-                    </button>
-                  </div>
+
+                  {/* Staff Selection and Done Button */}
+                  {requestData.deliveryStatus !== DeliveryStatus.Done && (
+                    <div className="flex flex-col sm:flex-row items-end gap-4 border-t pt-4 border-gray-200">
+                      <div className="w-full sm:w-auto flex-grow">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Delivered By (Staff)
+                        </label>
+                        <select
+                          value={selectedStaff}
+                          onChange={(e) => setSelectedStaff(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500"
+                          disabled={isUpdating || isStaffLoading}
+                        >
+                          <option value="">Select Staff</option>
+                          {staffList.map((staff) => (
+                            <option
+                              key={staff._id}
+                              value={`${staff.firstName} ${staff.surname || ""}`.trim()}
+                            >
+                              {staff.firstName} {staff.surname}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <button
+                        onClick={() =>
+                          handleUpdateDeliveryStatus(DeliveryStatus.Done)
+                        }
+                        disabled={
+                          isUpdating || requestData.deliveryStatus === "done" || !selectedStaff
+                        }
+                        className="w-full sm:w-auto px-4 py-2 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition"
+                      >
+                        {isUpdating ? "Updating..." : "Mark as Done"}
+                      </button>
+                    </div>
+                  )}
                 </div>
               </section>
             )}
