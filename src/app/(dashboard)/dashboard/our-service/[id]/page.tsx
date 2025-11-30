@@ -353,7 +353,7 @@ const ServiceDetailsPage = () => {
                           handleUpdateDeliveryStatus(DeliveryStatus.Done)
                         }
                         disabled={
-                          isUpdating || requestData.deliveryStatus === "done" || !selectedStaff
+                          isUpdating || !selectedStaff
                         }
                         className="w-full sm:w-auto px-4 py-2 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition"
                       >
